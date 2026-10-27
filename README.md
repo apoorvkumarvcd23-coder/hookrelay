@@ -9,6 +9,8 @@ real messaging account or paid provider.
 
 **TypeScript · Node.js 24 · built-in HTTP/SQLite · no npm dependencies**
 
+![Local workbench showing a signed fixture delivered to the mock provider](docs/demo.jpg)
+
 ## Run the demo
 
 Node.js 24+ is required for native TypeScript stripping and `node:sqlite`.
