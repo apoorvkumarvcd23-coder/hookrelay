@@ -75,7 +75,9 @@ This is a project-specific signing protocol, **not** a Plivo V3 implementation.
   existing ID returns 409; the original event is never overwritten.
 - Event and delivery-job inserts share a transaction.
 - Jobs have durable attempts, exponential backoff, bounded `Retry-After`, a
-  four-attempt limit and dead-letter replay.
+  four-attempt limit and dead-letter replay. `Retry-After` accepts delay-seconds
+  or HTTP dates, capped at 60 seconds without shortening exponential backoff.
+  Past dates and invalid values leave the backoff unchanged.
 - Worker leases permit recovery after interruption. Stale workers cannot
   overwrite a newer owner's result.
 - The outbound event ID remains the idempotency key. The mock receiver deduplicates
@@ -92,9 +94,10 @@ This is a project-specific signing protocol, **not** a Plivo V3 implementation.
 npm test
 ```
 
-Nine tests exercise tampering/stale signatures, JSON/XML normalization,
+Tests exercise tampering/stale signatures, JSON/XML normalization,
 duplicate conflicts, delayed retries, permanent failures, rate limiting,
-dead-letter replay, crashed/stale workers, network errors and durable reopen.
+HTTP-date retry delays, dead-letter replay, crashed/stale workers, network
+errors and durable reopen.
 GitHub Actions runs the same suite. Mock behavior is test data, not provider SLA
 evidence. SQLite databases, `.env` and generated credentials are excluded.
 

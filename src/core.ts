@@ -91,7 +91,13 @@ export async function runOnce(queue: Queue, target: string, secret: string, tran
         'X-Signature': sign(secret, timestamp, String(job.payload)), 'Idempotency-Key': String(job.id) }, body: String(job.payload) });
     status = response.status;
     const retryAfter = response.headers.get('retry-after');
-    if (retryAfter && /^\d+$/.test(retryAfter)) delay = Math.max(delay, Math.min(60000, Number(retryAfter) * 1000));
+    if (retryAfter) {
+      // Retry-After permits either delay-seconds or an absolute HTTP date.
+      const requestedDelay = /^\d+$/.test(retryAfter)
+        ? Number(retryAfter) * 1000
+        : Date.parse(retryAfter) - now;
+      if (!Number.isNaN(requestedDelay)) delay = Math.max(delay, Math.min(60000, requestedDelay));
+    }
     await response.body?.cancel();
   } catch { /* A bounded network failure is retryable; response bodies/secrets are not logged. */ }
   const success = status >= 200 && status < 300;

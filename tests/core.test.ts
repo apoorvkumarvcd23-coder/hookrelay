@@ -54,6 +54,28 @@ test('retry-after is honored and retries stop after four attempts', async () => 
   for (let i = 1; i < 4; i++) await runOnce(q, 'http://fixture', secret, throttle, now + i * 10000);
   assert.equal(q.list()[0].state, 'dead'); assert.equal(q.list()[0].attempts, 4); q.close();
 });
+test('retry-after accepts HTTP dates, caps long waits and preserves backoff for invalid or past values', async () => {
+  const cases: [string, number][] = [
+    [new Date(now + 10000).toUTCString(), 10000],
+    [new Date(now + 120000).toUTCString(), 60000],
+    [new Date(now - 10000).toUTCString(), 1000],
+    ['120', 60000],
+    ['0', 1000],
+    ['not-a-date', 1000],
+    ['', 1000],
+  ];
+  for (const [header, delay] of cases) {
+    const q = fixture();
+    try {
+      q.accept(event, now);
+      const throttle: typeof fetch = async () => new Response('', { status: 429, headers: { 'Retry-After': header } });
+      await runOnce(q, 'http://fixture', secret, throttle, now);
+      assert.equal(q.list()[0].next_at, now + delay, header);
+      assert.equal((await runOnce(q, 'http://fixture', secret, throttle, now + delay - 1)).worked, false, header);
+    } finally { q.close(); }
+  }
+});
+
 test('crashed workers are reclaimed and stale owners cannot overwrite results', () => {
   const q = fixture(); q.accept(event, now);
   const old = q.claim(now)!; assert.equal(q.claim(now + 1), null);
